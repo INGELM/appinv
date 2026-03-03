@@ -264,7 +264,13 @@ $(document).ready(function() {
             data: JSON.stringify(data),
             success: function(response) {
                 if (response.success) {
-                    Swal.fire('Éxito', response.message, 'success');
+                    Swal.fire({
+                        title: 'Éxito',
+                        text: response.message,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
                     $('#modalSolicitar').modal('hide');
                     $('#form-solicitar')[0].reset();
                     tabla.ajax.reload();
