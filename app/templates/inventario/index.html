@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Inventario - Sistema de Inventario{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-boxes"></i> Gestión de Inventario</h2>
+        <div>
+            <a href="{{ url_for('importar.index') }}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-file-earmark-arrow-up"></i> Importar Excel
+            </a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalMaterial">
+                <i class="bi bi-plus-circle"></i> Nuevo Material
+            </button>
+        </div>
+    </div>
+    
+    <!-- Tabla de Inventario -->
+    <div class="card">
+        <div class="card-body">
+            <table id="tabla-inventario" class="table table-striped table-hover" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha Ingreso</th>
+                        <th>N° Proceso</th>
+                        <th>Proveedor</th>
+                        <th>Material</th>
+                        <th>Descripción</th>
+                        <th>Cant.</th>
+                        <th>Disp.</th>
+                        <th>Tipo</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Nuevo/Editar Material -->
+<div class="modal fade" id="modalMaterial" tabindex="-1" aria-labelledby="modalMaterialLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalMaterialLabel">Nuevo Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-material">
+                <div class="modal-body">
+                    <input type="hidden" id="material-id">
+                    
+                    <div class="mb-3">
+                        <label for="material" class="form-label">Material *</label>
+                        <input type="text" class="form-control" id="material" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <input type="text" class="form-control" id="descripcion">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cantidad" class="form-label">Cantidad *</label>
+                            <input type="number" class="form-control" id="cantidad" min="1" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="tipo" class="form-label">Tipo *</label>
+                            <select class="form-select" id="tipo" required>
+                                <option value="Herramienta">Herramienta</option>
+                                <option value="Consumible">Consumible</option>
+                                <option value="Equipo">Equipo</option>
+                                <option value="Repuesto">Repuesto</option>
+                                <option value="Accesorio">Accesorio</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="num_proceso" class="form-label">N° Proceso</label>
+                            <input type="text" class="form-control" id="num_proceso">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="proveedor" class="form-label">Proveedor</label>
+                            <input type="text" class="form-control" id="proveedor">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.puedeAsignar = {{ 'true' if current_user.tiene_permiso('asignar') else 'false' }};
+    window.puedeSolicitar = {{ 'true' if current_user.tiene_permiso('solicitar') else 'false' }};
+</script>
+<script src="{{ url_for('static', filename='js/inventario.js') }}"></script>
+{% endblock %}

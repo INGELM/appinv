@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Inventario{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-file-earmark-arrow-up"></i> Importar Inventario desde Excel</h2>
+        <a href="{{ url_for('inventario.index') }}" class="btn btn-secondary">Volver</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <p>Suba un archivo Excel (.xlsx) o CSV con la primera fila como encabezado. Las columnas requeridas son: <strong>material</strong>, <strong>cantidad</strong>, <strong>tipo</strong>. Opcionales: <strong>num_proceso</strong>, <strong>proveedor</strong>, <strong>observaciones</strong>.</p>
+            <p>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('static', filename='files/import_template.csv') }}" download>
+                    <i class="bi bi-download"></i> Descargar plantilla (CSV)
+                </a>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('importar.download_template') }}">
+                    <i class="bi bi-download"></i> Descargar plantilla (XLSX)
+                </a>
+            </p>
+
+            <form method="post" enctype="multipart/form-data">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.archivo.label(class_='form-label') }}
+                    {{ form.archivo(class_='form-control') }}
+                </div>
+                <div>
+                    {{ form.submit(class_='btn btn-primary') }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+migrations/
+.venv/
+__pycache__/
+instance/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.bak
+*.swp
+.DS_Store
+TODO.md

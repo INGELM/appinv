@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Inventario{% endblock %}</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    
+    <!-- Bootstrap 5 CSS (local) -->
+    <link href="{{ url_for('static', filename='libs/css/bootstrap.min.css') }}" rel="stylesheet">
+    <!-- DataTables CSS (local) -->
+    <link href="{{ url_for('static', filename='libs/css/dataTables.bootstrap5.min.css') }}" rel="stylesheet">
+    <!-- Select2 CSS (local) -->
+    <link href="{{ url_for('static', filename='libs/css/select2.min.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='libs/css/select2-bootstrap4.min.css') }}" rel="stylesheet" />
+    <!-- SweetAlert2 CSS (local) -->
+    <link href="{{ url_for('static', filename='libs/css/sweetalert2.min.css') }}" rel="stylesheet">
+    <!-- Bootstrap Icons (local) -->
+    <link href="{{ url_for('static', filename='libs/css/bootstrap-icons.css') }}" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-none d-md-block sidebar py-3">
+                <div class="text-center mb-4">
+                    <h5 class="text-white"><i class="bi bi-box-seam"></i> Inventario</h5>
+                    <!--<small class="text-white-50">{{ current_user.rol }}</small>-->
+                </div>
+                <hr>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    {% if current_user.tiene_permiso('ver_inventario') %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('inventario.index') }}" class="{{ 'active' if request.endpoint == 'inventario.index' }}">
+                            <i class="bi bi-boxes"></i> Inventario
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.tiene_permiso('asignar') or current_user.tiene_permiso('solicitar') %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('asignaciones.index') }}" class="{{ 'active' if request.endpoint == 'asignaciones.index' }}">
+                            <i class="bi bi-arrow-left-right"></i> Asignaciones
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.tiene_permiso('solicitar') %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('asignaciones.mis_solicitudes') }}" class="{{ 'active' if request.endpoint == 'asignaciones.mis_solicitudes' }}">
+                            <i class="bi bi-clipboard-check"></i> Mis Solicitudes
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.tiene_permiso('solicitar') or current_user.tiene_permiso('asignar') %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('asignaciones.mis_asignaciones') }}" class="{{ 'active' if request.endpoint == 'asignaciones.mis_asignaciones' }}">
+                            <i class="bi bi-person-badge"></i> Mis Asignaciones
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% if current_user.puede_activar() %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('auth.usuarios') }}" class="{{ 'active' if 'usuarios' in request.endpoint }}">
+                            <i class="bi bi-people"></i> Usuarios
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <hr>
+                <div class="text-center mt-3">
+                    <small class="text-white-50">{{ current_user.nombres }}</small><br>
+                    <small class="text-white-50">({{ current_user.rol }})</small>
+                    <br>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-light mt-2">
+                        <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+                    </a>
+                </div>
+            </nav>
+            
+            <!-- Main content -->
+            <main class="col-md-10 ms-sm-auto main-content">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    {% else %}
+    <div class="container mt-5">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block login_content %}{% endblock %}
+    </div>
+    {% endif %}
+    
+    <!-- jQuery (local) -->
+    <script src="{{ url_for('static', filename='libs/js/jquery-3.7.0.min.js') }}"></script>
+    <!-- Select2 JS (local) -->
+    <script src="{{ url_for('static', filename='libs/js/select2.min.js') }}"></script>
+    <!-- Bootstrap 5 JS (local) -->
+    <script src="{{ url_for('static', filename='libs/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- DataTables JS (local) -->
+    <script src="{{ url_for('static', filename='libs/js/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='libs/js/dataTables.bootstrap5.min.js') }}"></script>
+    <!-- SweetAlert2 JS (local) -->
+    <script src="{{ url_for('static', filename='libs/js/sweetalert2.min.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

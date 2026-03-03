@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Solicitudes - Sistema de Inventario{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-clipboard-check"></i> Mis Solicitudes</h2>
+        {% if current_user.tiene_permiso('solicitar') or current_user.tiene_permiso('asignar') %}
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSolicitar">
+            <i class="bi bi-plus-circle"></i> Nueva Asignacion
+        </button>
+        {% endif %}
+    </div>
+    
+    <!-- Tabla de Mis Solicitudes -->
+    <div class="card">
+        <div class="card-body">
+            <table id="tabla-mis-solicitudes" class="table table-striped table-hover" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Material</th>
+                        <th>Cantidad</th>
+                        <th>Estatus</th>
+                        <th>Fecha Solicitud</th>
+                        <th>Fecha Procesamiento</th>
+                        <th>Fecha Devolución</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Nueva Solicitud -->
+<div class="modal fade" id="modalSolicitar" tabindex="-1" aria-labelledby="modalSolicitarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSolicitarLabel">Nueva Asignacion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-solicitar">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_material" class="form-label">Material *</label>
+                        <select class="form-select" id="id_material" required>
+                            <option value="">Seleccione un material</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="cantidad" class="form-label">Cantidad *</label>
+                        <input type="number" class="form-control" id="cantidad" min="1" required>
+                        <div class="form-text" id="disponible-info"></div>
+                    </div>
+                    
+                    {% if current_user.tiene_permiso('asignar') %}
+                    <div class="mb-3">
+                        <label for="id_receptor" class="form-label">Asignar A *</label>
+                        <select class="form-select" id="id_receptor" required>
+                            <option value="">Seleccione un usuario</option>
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Asignar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.puedeAsignar = {{ 'true' if current_user.tiene_permiso('asignar') else 'false' }};
+    window.puedeAprobar = {{ 'true' if current_user.tiene_permiso('aprobar') else 'false' }};
+    window.puedeDevolver = {{ 'true' if (current_user.tiene_permiso('asignar') or current_user.rol in ['Supervisor','Superintendente']) else 'false' }};
+    window.usuarioActual = "{{ current_user.nombres }}";
+</script>
+<script src="{{ url_for('static', filename='js/mis_solicitudes.js') }}"></script>
+{% endblock %}

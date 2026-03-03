@@ -1,0 +1,53 @@
+/* Estilos generales del sistema */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Sidebar */
+.sidebar {
+    min-height: 100vh;
+    background: #2c3e50;
+}
+
+.sidebar a {
+    color: #ecf0f1;
+    text-decoration: none;
+    padding: 10px 15px;
+    display: block;
+    border-radius: 4px;
+    margin: 2px 0;
+}
+
+.sidebar a:hover, .sidebar a.active {
+    background: #34495e;
+}
+
+/* Contenido principal */
+.main-content {
+    flex: 1;
+    padding: 20px;
+}
+
+/* Tablas responsivas */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Encabezados de tarjetas */
+.card-header {
+    background: #3498db;
+    color: white;
+}
+
+/* Botones */
+.btn-primary {
+    background: #3498db;
+    border-color: #3498db;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+    border-color: #2980b9;
+}

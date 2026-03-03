@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Sistema de Inventario{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Dashboard</h2>
+    
+    <!-- Tarjetas de estadísticas -->
+    <div class="row mb-4">
+        {% if current_user.rol in ['Superintendente', 'Supervisor'] %}
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-boxes"></i> Total Materiales</h5>
+                    <h2 class="mb-0">{{ stats.total_materiales }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-clipboard-data"></i> Total Stock</h5>
+                    <h2 class="mb-0">{{ stats.total_stock }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-hourglass-split"></i> Solicitudes Pendientes</h5>
+                    <h2 class="mb-0">{{ stats.solicitudes_pendientes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-people"></i> Usuarios Activos</h5>
+                    <h2 class="mb-0">{{ stats.usuarios_activos }}</h2>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-md-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-clipboard-check"></i> Mis Solicitudes</h5>
+                    <h2 class="mb-0">{{ stats.mis_solicitudes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-box-check"></i> Materiales Asignados</h5>
+                    <h2 class="mb-0">{{ stats.mis_asignaciones }}</h2>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Materiales asignados al usuario -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-box-seam"></i> Mis Materiales Asignados</h5>
+                </div>
+                <div class="card-body">
+                    <table id="tabla-mis-materiales" class="table table-striped table-hover" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Material</th>
+                                <th>Tipo</th>
+                                <th>Cantidad</th>
+                                <th>Fecha de Asignación</th>
+                                <th>Asignado Por</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

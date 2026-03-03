@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Registrarse - Inventario{% endblock %}
+
+{% block login_content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white text-center">
+                <h4><i class="bi bi-person-plus"></i> Registro de Usuario</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="mb-3">
+                        <label for="nombres" class="form-label">Nombres Completos</label>
+                        <input type="text" class="form-control" id="nombres" name="nombres" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="usuario" class="form-label">Usuario</label>
+                        <input type="text" class="form-control" id="usuario" name="usuario" required minlength="3">
+                        <div class="form-text">Mínimo 3 caracteres</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="rol" class="form-label">Rol</label>
+                        <select class="form-select" id="rol" name="rol" required>
+                            <option value="Analista">Analista/Ingeniero</option>
+                        </select>
+                        <div class="form-text">Su cuenta deberá ser activada por un Supervisor</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                        <div class="form-text">Mínimo 6 caracteres</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Confirmar Contraseña</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Registrarse
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <small>¿Ya tiene cuenta? <a href="{{ url_for('auth.login') }}">Iniciar Sesión</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

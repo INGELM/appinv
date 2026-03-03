@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Recibo Asignación #{{ a.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  @media print {
+    .no-print { display: none !important; }
+  }
+  .recibo { max-width: 800px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; }
+  .firma { height: 80px; border-bottom: 1px solid #000; margin-bottom: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Cintillo a ancho completo -->
+<div style="width:100%; overflow:hidden;">
+  <img src="{{ url_for('static', filename='img/CINTILLOFICIAL.JPG') }}" alt="Cintillo" style="display:block; width:100vw; margin-left:calc(50% - 50vw); height:auto; max-height:140px; object-fit:cover;">
+</div>
+
+<div class="recibo bg-white">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4>Constancia de Entrega</h4>
+      <small>Número: {{ a.id }}</small>
+    </div>
+    <div class="text-end">
+      <strong>Fecha solicitud:</strong> {{ a.fecha_solicitud.strftime('%d-%m-%Y %H:%M') }}<br>
+      {% if a.fecha_aprobacion %}
+      <strong>Fecha aprobación:</strong> {{ a.fecha_aprobacion.strftime('%d-%m-%Y %H:%M') }}
+      {% endif %}
+    </div>
+  </div>
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>MATERIAL</th>
+        <th>TIPO</th>
+        <th>CANT</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ a.material.material }}</td>
+        <td>{{ a.material.tipo }}</td>
+        <td class="text-center">{{ a.cantidad }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><strong>Observaciones:</strong> {{ a.observaciones or '---' }}</p>
+
+  <p>
+    Constancia de entrega del material listado, al trabajador: <strong>{{ a.receptor.nombres if a.receptor else '' }} [{{ a.receptor.usuario if a.receptor else '' }}]</strong>, quien se compromete a hacer un uso adecuado de estos.
+  </p>
+
+  <div class="row mt-4">
+    <div class="col-6 text-center">
+      <div class="firma"></div>
+      <div><strong>Recibido por</strong></div>
+      <div>{{ a.receptor.nombres if a.receptor else '' }}</div>
+    </div>
+    <div class="col-6 text-center">
+      <div class="firma"></div>
+      <div><strong>Entregado por</strong></div>
+      <div>{{ a.asignador.nombres if a.asignador else '' }}</div>
+    </div>
+  </div>
+
+  <div class="mt-4 no-print">
+    <a href="{{ url_for('asignaciones.recibo', id=a.id, download=1) }}" class="btn btn-sm btn-outline-secondary">Descargar HTML</a>
+    <button onclick="window.print()" class="btn btn-sm btn-primary">Imprimir</button>
+    <a href="{{ url_for('asignaciones.index') }}" class="btn btn-sm btn-link">Volver</a>
+  </div>
+</div>
+
+{% endblock %}

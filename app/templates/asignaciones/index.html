@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Asignaciones - Sistema de Inventario{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-arrow-left-right"></i> Gestión de Asignaciones</h2>
+        {% if current_user.tiene_permiso('solicitar') or current_user.tiene_permiso('asignar') %}
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSolicitar">
+            <i class="bi bi-plus-circle"></i> Nueva Asignacion
+        </button>
+        {% endif %}
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="filtro-estatus">Filtrar por Estatus:</label>
+                    <select id="filtro-estatus" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Aprobado">Aprobado</option>
+                        <option value="Rechazado">Rechazado</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabla de Asignaciones -->
+    <div class="card">
+        <div class="card-body">
+            <table id="tabla-asignaciones" class="table table-striped table-hover" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Material</th>
+                        <th>Cantidad</th>
+                        <th>Solicitante</th>
+                        <th>Aprobador</th>
+                        <th>Estatus</th>
+                        <th>Fecha Solicitud</th>
+                        <th>Fecha Devolución</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Nueva Solicitud -->
+<div class="modal fade" id="modalSolicitar" tabindex="-1" aria-labelledby="modalSolicitarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSolicitarLabel">Nueva Asignacion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-solicitar">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_material" class="form-label">Material *</label>
+                        <select class="form-select" id="id_material" required>
+                            <option value="">Seleccione un material</option>
+                        </select>
+                    </div>
+
+                    {% if current_user.tiene_permiso('asignar') %}
+                    <div class="mb-3">
+                        <label for="id_receptor" class="form-label">Asignar A *</label>
+                        <select class="form-select" id="id_receptor" required>
+                            <option value="">Seleccione un usuario</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="cantidad" class="form-label">Cantidad *</label>
+                        <input type="number" class="form-control" id="cantidad" min="1" required>
+                        <div class="form-text" id="disponible-info"></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Asignar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Aprobar/Rechazar -->
+<div class="modal fade" id="modalAprobar" tabindex="-1" aria-labelledby="modalAprobarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAprobarLabel">Aprobar Solicitud</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-aprobar">
+                <div class="modal-body">
+                    <input type="hidden" id="asignacion-id">
+                    
+                    <div class="mb-3">
+                        <label for="estatus" class="form-label">Estatus *</label>
+                        <select class="form-select" id="estatus" required>
+                            <option value="Aprobado">Aprobar</option>
+                            <option value="Rechazado">Rechazar</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observaciones-aprobar" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones-aprobar" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.puedeAsignar = {{ 'true' if current_user.tiene_permiso('asignar') else 'false' }};
+    window.puedeAprobar = {{ 'true' if current_user.tiene_permiso('aprobar') else 'false' }};
+    window.puedeDevolver = {{ 'true' if (current_user.tiene_permiso('asignar') or current_user.rol in ['Supervisor','Superintendente']) else 'false' }};
+    window.usuarioActual = "{{ current_user.nombres }}";
+</script>
+<script src="{{ url_for('static', filename='js/asignaciones.js') }}"></script>
+<script>
+    // Si se pasa ?material_id=123 en la URL, abrimos el modal de asignación y
+    // preseleccionamos ese material. Este bloque se ejecuta después de cargar
+    // asignaciones.js para que sus manejadores estén registrados.
+    (function() {
+        function getQueryParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        const materialId = getQueryParam('material_id');
+        if (!materialId) return;
+
+        $(document).ready(function() {
+            // Al mostrarse completamente el modal, seleccionar el material en Select2
+            $('#modalSolicitar').on('shown.bs.modal', function() {
+                // Obtener datos del material desde API y añadir la opción a Select2
+                $.get(`/inventario/api/obtener/${materialId}`, function(resp) {
+                    if (resp && resp.success) {
+                        const m = resp.data;
+                        const el = $('#id_material');
+                        const text = m.material + ' (Disponible: ' + m.cantidad_disponible + ')';
+                        const option = new Option(text, m.id, true, true);
+                        el.append(option).trigger('change');
+                        // actualizar info de disponible
+                        $('#disponible-info').text(`Cantidad disponible: ${m.cantidad_disponible}`);
+                        $('#cantidad').attr('max', m.cantidad_disponible);
+                    }
+                }).fail(function() {
+                    console.warn('No se pudo obtener el material para preselección:', materialId);
+                });
+                // remover este handler una vez ejecutado
+                $('#modalSolicitar').off('shown.bs.modal');
+            });
+
+            // Abrir modal (ahora que los manejadores están registrados)
+            $('#modalSolicitar').modal('show');
+        });
+    })();
+</script>
+{% endblock %}

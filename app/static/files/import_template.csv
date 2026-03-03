@@ -1,0 +1,5 @@
+material,cantidad,tipo,num_proceso,proveedor,observaciones
+Tornillo M6 x 20,100,Consumible,PROC-001,Proveedor A,Para uso general
+Llave Inglesa 12mm,5,Herramienta,PROC-002,Proveedor B,Herramienta compartida
+Filtro de Aceite,10,Repuesto,PROC-003,Proveedor C,Repuesto para mantenimiento
+Cable USB-C,50,Accesorio,PROC-004,Proveedor D,Accesorio para equipos

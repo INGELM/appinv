@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Preview Importación{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-eye"></i> Vista previa de importación</h2>
+        <a href="{{ url_for('inventario.index') }}" class="btn btn-secondary">Volver</a>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <p>Revise las filas detectadas. Use las casillas para seleccionar las filas a procesar. Elija la acción para las filas que ya existen por nombre:</p>
+            <form method="post" action="{{ url_for('importar.confirm') }}">
+                {{ form.hidden_tag() }}
+                <input type="hidden" name="rows_json" value='{{ rows|tojson }}'>
+
+                <div class="mb-3">
+                    <label class="form-label">Acción para materiales existentes:</label>
+                    <select name="action_mode" class="form-select" style="max-width:320px;">
+                        <option value="crear_nuevos">Crear nuevos aun cuando exista</option>
+                        <option value="actualizar_existente">Actualizar existente (sumar cantidad)</option>
+                        <option value="crear_o_actualizar" selected>Crear si no existe / sumar si existe</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th scope="col">Sel</th>
+                                <th scope="col">#Fila</th>
+                                <th scope="col">Material</th>
+                                <th scope="col">Cantidad</th>
+                                <th scope="col">Tipo</th>
+                                <th scope="col">Proveedor</th>
+                                <th scope="col">N° Proceso</th>
+                                <th scope="col">Observaciones</th>
+                                <th scope="col">Existe</th>
+                                <th scope="col">Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for r in rows %}
+                            <tr class="{{ 'table-danger' if r.error }}">
+                                <td><input type="checkbox" name="selected" value="{{ loop.index0 }}" {% if not r.error %}checked{% endif %}></td>
+                                <td>{{ r._fila }}</td>
+                                <td>{{ r.material }}</td>
+                                <td>{{ r.cantidad }}</td>
+                                <td>{{ r.tipo }}</td>
+                                <td>{{ r.proveedor }}</td>
+                                <td>{{ r.num_proceso }}</td>
+                                <td>{{ r.observaciones }}</td>
+                                <td>{{ 'Sí' if r.exists else 'No' }}</td>
+                                <td>{{ r.error }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Confirmar importación</button>
+                    <a href="{{ url_for('importar.index') }}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
