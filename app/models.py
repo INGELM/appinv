@@ -56,6 +56,8 @@ class Inventario(db.Model):
     tipo = db.Column(db.String(20), nullable=False)  # Herramienta, Consumible, Equipo, Repuesto, Accesorio
     observaciones = db.Column(db.Text, nullable=True)
     activo = db.Column(db.Boolean, default=True)
+    foto1 = db.Column(db.String(200), nullable=True)
+    foto2 = db.Column(db.String(200), nullable=True)
     
     # Relaciones
     asignaciones = db.relationship('Asignacion', backref='material', lazy='dynamic')

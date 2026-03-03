@@ -17,6 +17,7 @@ $(document).ready(function() {
     tabla = $('#tabla-inventario').DataTable({
         processing: true,
         serverSide: true,
+        responsive: true,
         ajax: {
             url: '/inventario/api/listar',
             type: 'GET'
@@ -32,25 +33,29 @@ $(document).ready(function() {
             { data: 'cantidad_disponible' },
             { data: 'tipo' },
             { 
-                data: null,
-                render: function(data, type, row) {
-                    let botones = `<button class="btn btn-sm btn-warning btn-editar" data-id="${row.id}" title="Editar">
-                        <i class="bi bi-pencil"></i></button> `;
-                    
-                    // Botón para asignar desde la tabla (redirige a la página de asignaciones
-                    // y abre el modal con el material preseleccionado)
-                    if (window.puedeAsignar || window.puedeSolicitar) {
-                        botones += `<button class="btn btn-sm btn-success btn-asignar" data-id="${row.id}" data-material="${(row.material||'').replace(/"/g,'&quot;')}" title="Asignar">
-                            <i class="bi bi-box-arrow-in-right"></i></button> `;
-                    }
-
-                    if (row.cantidad_asignada === 0) {
-                        botones += `<button class="btn btn-sm btn-danger btn-eliminar" data-id="${row.id}" title="Eliminar">
-                        <i class="bi bi-trash"></i></button>`;
-                    }
-                    return botones;
+                data: 'foto1',
+                render: function(data) {
+                    return data ? `<img src="/static/files/${data}" alt="Foto 1" class="img-thumbnail img-open img-clickable table-avatar" data-filename="${data}">` : '-';
                 }
-            }
+            },
+            { 
+                data: 'foto2',
+                render: function(data) {
+                    return data ? `<img src="/static/files/${data}" alt="Foto 2" class="img-thumbnail img-open img-clickable table-avatar" data-filename="${data}">` : '-';
+                }
+            },
+            { data: 'asignado_a' }
+        ],
+        columnDefs: [
+            { targets: [0,6,7,9,10,11], className: 'text-center' },
+            { targets: [1], width: '110px', responsivePriority: 2 },
+            { targets: [11], width: '180px', responsivePriority: 4 },
+            { targets: [0], responsivePriority: 1 },
+            { targets: [4], responsivePriority: 3 },
+            { targets: [6], responsivePriority: 5 },
+            { targets: [7], responsivePriority: 6 },
+            { targets: [9], responsivePriority: 7 },
+            { targets: [10], responsivePriority: 8 }
         ],
         language: {
             url: '/static/js/vendor/es-ES.json'
@@ -62,29 +67,22 @@ $(document).ready(function() {
         e.preventDefault();
         
         const id = $('#material-id').val();
-        const data = {
-            material: $('#material').val(),
-            descripcion: $('#descripcion').val(),
-            cantidad: $('#cantidad').val(),
-            tipo: $('#tipo').val(),
-            num_proceso: $('#num_proceso').val(),
-            proveedor: $('#proveedor').val(),
-            observaciones: $('#observaciones').val()
-        };
-        
+        const formData = new FormData(this);
+
         let url = '/inventario/api/crear';
         let method = 'POST';
         
         if (id) {
             url = `/inventario/api/editar/${id}`;
-            data.id = id;
+            formData.append('id', id);
         }
         
         $.ajax({
             url: url,
             type: method,
-            contentType: 'application/json',
-            data: JSON.stringify(data),
+            processData: false,
+            contentType: false,
+            data: formData,
             success: function(response) {
                 if (response.success) {
                     Swal.fire('Éxito', response.message, 'success');
@@ -102,10 +100,9 @@ $(document).ready(function() {
         });
     });
     
-    // Editar material
-    $(document).on('click', '.btn-editar', function() {
-        const id = $(this).data('id');
-        
+    // Función para abrir modal de edición por id
+    function openEditModal(id) {
+        if (!id) return;
         $.get(`/inventario/api/obtener/${id}`, function(response) {
             if (response.success) {
                 const data = response.data;
@@ -117,17 +114,52 @@ $(document).ready(function() {
                 $('#num_proceso').val(data.num_proceso);
                 $('#proveedor').val(data.proveedor);
                 $('#observaciones').val(data.observaciones);
-                
+                // Mostrar vistas previas de fotos si existen
+                if (data.foto1) {
+                    $('#img-foto1').attr('src', `/static/files/${data.foto1}`);
+                    $('#preview-foto1-container').show();
+                    $('#delete-foto1').val('');
+                } else {
+                    $('#img-foto1').attr('src', '');
+                    $('#preview-foto1-container').hide();
+                    $('#delete-foto1').val('');
+                }
+                if (data.foto2) {
+                    $('#img-foto2').attr('src', `/static/files/${data.foto2}`);
+                    $('#preview-foto2-container').show();
+                    $('#delete-foto2').val('');
+                } else {
+                    $('#img-foto2').attr('src', '');
+                    $('#preview-foto2-container').hide();
+                    $('#delete-foto2').val('');
+                }
+
                 $('#modalMaterialLabel').text('Editar Material');
                 $('#modalMaterial').modal('show');
             }
         });
+    }
+
+    // Manejar clic en botón eliminar foto dentro del modal (delegación)
+    $(document).on('click', '.btn-eliminar-foto', function() {
+        const foto = $(this).data('foto');
+        if (foto === 'foto1') {
+            $('#img-foto1').attr('src', '');
+            $('#preview-foto1-container').hide();
+            $('#delete-foto1').val('1');
+            // También limpiar input file si el usuario cargó uno
+            $('#foto1').val('');
+        } else if (foto === 'foto2') {
+            $('#img-foto2').attr('src', '');
+            $('#preview-foto2-container').hide();
+            $('#delete-foto2').val('1');
+            $('#foto2').val('');
+        }
     });
     
-    // Eliminar material
-    $(document).on('click', '.btn-eliminar', function() {
-        const id = $(this).data('id');
-        
+    // Función para eliminar material con confirmación
+    function deleteMaterial(id) {
+        if (!id) return;
         Swal.fire({
             title: '¿Está seguro?',
             text: 'Esta acción no se puede deshacer',
@@ -151,19 +183,113 @@ $(document).ready(function() {
                 });
             }
         });
-    });
+    }
 
-    // Click en botón "Asignar" dentro de la tabla -> redirigir a /asignaciones con parámetro
-    $(document).on('click', '.btn-asignar', function() {
-        const id = $(this).data('id');
-        // Abrir la página de asignaciones y pasar material_id para preseleccionar
+    // Función para redirigir a asignaciones
+    function assignMaterial(id) {
+        if (!id) return;
         window.location = `/asignaciones/?material_id=${id}`;
-    });
+    }
     
     // Limpiar modal al cerrar
     $('#modalMaterial').on('hidden.bs.modal', function() {
         $('#form-material')[0].reset();
         $('#material-id').val('');
         $('#modalMaterialLabel').text('Nuevo Material');
+        // Reset previews y flags de eliminación
+        $('#img-foto1').attr('src', '');
+        $('#img-foto2').attr('src', '');
+        $('#preview-foto1-container').hide();
+        $('#preview-foto2-container').hide();
+        $('#delete-foto1').val('');
+        $('#delete-foto2').val('');
+    });
+
+    // Selección de filas (única): click selecciona y deselecciona otras
+    let selectedRowId = null;
+    $('#tabla-inventario tbody').on('click', 'tr', function(e) {
+        const row = tabla.row(this).data();
+        if (!row) return;
+        // Si ya está seleccionada, deseleccionar
+        if ($(this).hasClass('table-active')) {
+            $(this).removeClass('table-active');
+            selectedRowId = null;
+        } else {
+            $('#tabla-inventario tbody tr.table-active').removeClass('table-active');
+            $(this).addClass('table-active');
+            selectedRowId = row.id;
+        }
+    });
+
+    // Menú contextual: click derecho en fila
+    $('#tabla-inventario tbody').on('contextmenu', 'tr', function(e) {
+        e.preventDefault();
+        const row = tabla.row(this).data();
+        if (!row) return;
+        // seleccionar la fila
+        $('#tabla-inventario tbody tr.table-active').removeClass('table-active');
+        $(this).addClass('table-active');
+        selectedRowId = row.id;
+
+        // posicionar y mostrar menú
+        const menu = $('#context-menu');
+        menu.data('id', selectedRowId);
+        menu.css({ top: e.pageY + 'px', left: e.pageX + 'px' }).show();
+        return false;
+    });
+
+    // Ocultar menú al hacer click en cualquier parte
+    $(document).on('click', function(e) {
+        $('#context-menu').hide();
+    });
+
+    // Acciones del menú contextual
+    $('#context-menu').on('click', '.cm-item', function(e) {
+        e.stopPropagation();
+        const action = $(this).data('action');
+        const id = $('#context-menu').data('id');
+        $('#context-menu').hide();
+        if (!id) return;
+        if (action === 'editar') {
+            openEditModal(id);
+        } else if (action === 'eliminar') {
+            deleteMaterial(id);
+        } else if (action === 'asignar') {
+            assignMaterial(id);
+        }
+    });
+
+    function openImageModal(src, filename) {
+        if (!src) return;
+        // Evitar abrir si ya está abierto
+        if ($('#imageModal').hasClass('show')) return;
+        $('#imageModalImg').attr('src', src);
+        if (filename) {
+            $('#imageModalLabel').text(filename);
+        } else {
+            $('#imageModalLabel').text('Imagen');
+        }
+        $('#imageModal').modal('show');
+    }
+
+    // Doble clic en tabla para abrir modal
+    $(document).on('dblclick', '#tabla-inventario tbody img.img-open', function(e) {
+        const src = $(this).attr('src');
+        const filename = $(this).data('filename') || '';
+        openImageModal(src, filename);
+    });
+
+    // Click simple en tabla también abre modal (por accesibilidad)
+    $(document).on('click', '#tabla-inventario tbody img.img-open', function(e) {
+        const src = $(this).attr('src');
+        const filename = $(this).data('filename') || '';
+        openImageModal(src, filename);
+    });
+
+    // Abrir imagen en modal al hacer clic en vistas previas del modal de edición
+    $(document).on('click', '#img-foto1, #img-foto2', function(e) {
+        const src = $(this).attr('src');
+        const filename = '';
+        openImageModal(src, filename);
     });
 });

@@ -19,96 +19,148 @@
     <!-- Tabla de Inventario -->
     <div class="card">
         <div class="card-body">
-            <table id="tabla-inventario" class="table table-striped table-hover" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Fecha Ingreso</th>
-                        <th>N° Proceso</th>
-                        <th>Proveedor</th>
-                        <th>Material</th>
-                        <th>Descripción</th>
-                        <th>Cant.</th>
-                        <th>Disp.</th>
-                        <th>Tipo</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para Nuevo/Editar Material -->
-<div class="modal fade" id="modalMaterial" tabindex="-1" aria-labelledby="modalMaterialLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalMaterialLabel">Nuevo Material</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="table-responsive">
+                <table id="tabla-inventario" class="table table-hover" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th title="Identificador">ID</th>
+                            <th title="Fecha de ingreso">Fecha ingreso</th>
+                            <th title="Nº Proceso">N° Proceso</th>
+                            <th title="Proveedor">Proveedor</th>
+                            <th title="Material">Material</th>
+                            <th title="Descripción">Descripción</th>
+                            <th title="Cantidad">Cant.</th>
+                            <th title="Disponibles">Disp.</th>
+                            <th title="Tipo">Tipo</th>
+                            <th title="Foto 1">Foto 1</th>
+                            <th title="Foto 2">Foto 2</th>
+                            <th title="Asignado a">Asignado A</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
-            <form id="form-material">
-                <div class="modal-body">
-                    <input type="hidden" id="material-id">
-                    
-                    <div class="mb-3">
-                        <label for="material" class="form-label">Material *</label>
-                        <input type="text" class="form-control" id="material" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="descripcion" class="form-label">Descripción</label>
-                        <input type="text" class="form-control" id="descripcion">
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="cantidad" class="form-label">Cantidad *</label>
-                            <input type="number" class="form-control" id="cantidad" min="1" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="tipo" class="form-label">Tipo *</label>
-                            <select class="form-select" id="tipo" required>
-                                <option value="Herramienta">Herramienta</option>
-                                <option value="Consumible">Consumible</option>
-                                <option value="Equipo">Equipo</option>
-                                <option value="Repuesto">Repuesto</option>
-                                <option value="Accesorio">Accesorio</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="num_proceso" class="form-label">N° Proceso</label>
-                            <input type="text" class="form-control" id="num_proceso">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="proveedor" class="form-label">Proveedor</label>
-                            <input type="text" class="form-control" id="proveedor">
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="observaciones" class="form-label">Observaciones</label>
-                        <textarea class="form-control" id="observaciones" rows="3"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-    window.puedeAsignar = {{ 'true' if current_user.tiene_permiso('asignar') else 'false' }};
-    window.puedeSolicitar = {{ 'true' if current_user.tiene_permiso('solicitar') else 'false' }};
-</script>
-<script src="{{ url_for('static', filename='js/inventario.js') }}"></script>
-{% endblock %}
+    <!-- Context menu (global) -->
+    <div id="context-menu">
+        <div class="cm-item" data-action="editar">Editar</div>
+        <div class="cm-item" data-action="asignar">Asignar</div>
+        <div class="cm-item" data-action="eliminar">Eliminar</div>
+    </div>
+
+    <!-- Modal para Nuevo/Editar Material -->
+    <div class="modal fade" id="modalMaterial" tabindex="-1" aria-labelledby="modalMaterialLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalMaterialLabel">Nuevo Material</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="form-material">
+                    <div class="modal-body">
+                        <input type="hidden" id="material-id" name="id">
+
+                        <div class="mb-3">
+                            <label for="material" class="form-label">Material *</label>
+                            <input type="text" class="form-control" id="material" name="material" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label">Descripción</label>
+                            <input type="text" class="form-control" id="descripcion" name="descripcion">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="cantidad" class="form-label">Cantidad *</label>
+                                <input type="number" class="form-control" id="cantidad" name="cantidad" min="1" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="tipo" class="form-label">Tipo *</label>
+                                <select class="form-select" id="tipo" name="tipo" required>
+                                    <option value="Herramienta">Herramienta</option>
+                                    <option value="Consumible">Consumible</option>
+                                    <option value="Equipo">Equipo</option>
+                                    <option value="Repuesto">Repuesto</option>
+                                    <option value="Accesorio">Accesorio</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="num_proceso" class="form-label">N° Proceso</label>
+                                <input type="text" class="form-control" id="num_proceso" name="num_proceso">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="proveedor" class="form-label">Proveedor</label>
+                                <input type="text" class="form-control" id="proveedor" name="proveedor">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="foto1" class="form-label">Foto 1</label>
+                            <input type="file" class="form-control" id="foto1" name="foto1" accept="image/*">
+                        </div>
+                        <div class="mb-3" id="preview-foto1-container" style="display:none;">
+                            <label class="form-label">Vista previa Foto 1</label>
+                            <div>
+                                <img id="img-foto1" src="" class="img-thumbnail mb-2 table-avatar" style="max-width:150px; display:block;">
+                                <button type="button" class="btn btn-sm btn-danger btn-eliminar-foto" data-foto="foto1">Eliminar foto 1</button>
+                                <input type="hidden" id="delete-foto1" name="delete_foto1" value="">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="foto2" class="form-label">Foto 2</label>
+                            <input type="file" class="form-control" id="foto2" name="foto2" accept="image/*">
+                        </div>
+                        <div class="mb-3" id="preview-foto2-container" style="display:none;">
+                            <label class="form-label">Vista previa Foto 2</label>
+                            <div>
+                                <img id="img-foto2" src="" class="img-thumbnail mb-2 table-avatar" style="max-width:150px; display:block;">
+                                <button type="button" class="btn btn-sm btn-danger btn-eliminar-foto" data-foto="foto2">Eliminar foto 2</button>
+                                <input type="hidden" id="delete-foto2" name="delete_foto2" value="">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="observaciones" class="form-label">Observaciones</label>
+                            <textarea class="form-control" id="observaciones" name="observaciones" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% endblock %}
+
+        {% block extra_js %}
+        <script>
+            window.puedeAsignar = {{ 'true' if current_user.tiene_permiso('asignar') else 'false' }};
+            window.puedeSolicitar = {{ 'true' if current_user.tiene_permiso('solicitar') else 'false' }};
+        </script>
+        <script src="{{ url_for('static', filename='js/inventario.js') }}"></script>
+        {% endblock %}
+    </div>
+
+    <!-- Modal para ver imagen en grande -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">Imagen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="imageModalImg" src="" class="img-fluid" style="max-height:75vh;">
+                </div>
+            </div>
+        </div>
+    </div>

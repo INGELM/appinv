@@ -11,3 +11,6 @@ class Config:
     # Configuración de WTF
     WTF_CSRF_ENABLED = True
     WTF_CSRF_TIME_LIMIT = 3600
+    
+    # Configuración de archivos subidos
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'app', 'static', 'files')

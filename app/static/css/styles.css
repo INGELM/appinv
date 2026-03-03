@@ -51,3 +51,64 @@ body {
     background: #2980b9;
     border-color: #2980b9;
 }
+
+.text-justify {
+  text-align: justify;
+}
+
+/* Estilos para encabezado de tablas del inventario */
+#tabla-inventario thead th {
+    background: linear-gradient(180deg, #0d6efd 0%, #0b5ed7 100%);
+    color: #fff;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-bottom: 2px solid rgba(0,0,0,0.08);
+    vertical-align: middle;
+    padding: 8px 8px;
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+
+#tabla-inventario thead th i {
+    margin-right: 6px;
+    opacity: 0.95;
+}
+
+/* Imagenes clicables */
+.img-clickable { cursor: pointer; }
+
+/* Avatar circular para imágenes en tabla */
+#tabla-inventario tbody img.table-avatar {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Context menu */
+#context-menu {
+    position: absolute;
+    z-index: 2000;
+    display: none;
+    min-width: 160px;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.15);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    border-radius: 6px;
+}
+#context-menu .cm-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+#context-menu .cm-item:hover { background: #f8f9fa; }
+
+#tabla-inventario tbody tr:hover {
+    background: rgba(13,110,253,0.04);
+}
+
+/* Alinear los encabezados centrados donde corresponde */
+#tabla-inventario thead th.text-center, #tabla-inventario thead th:nth-child(1) {
+    text-align: center;
+}

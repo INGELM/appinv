@@ -1,4 +1,7 @@
 let tabla;
+const seleccion = new Set();
+let receptorSeleccionado = null;
+
 $(document).ready(function() {
     // Añadir token CSRF a todas las peticiones AJAX
     (function() {
@@ -13,13 +16,32 @@ $(document).ready(function() {
             });
         }
     })();
+
+    function limpiarSeleccion() {
+        seleccion.clear();
+        receptorSeleccionado = null;
+        actualizarBotonSeleccion();
+    }
+
+    function actualizarBotonSeleccion() {
+        const btn = $('#btn-print-seleccion');
+        if (!btn.length) return;
+        btn.prop('disabled', seleccion.size === 0);
+    }
+
+    function sincronizarCheckboxes() {
+        $('#tabla-asignaciones input.select-asignacion').each(function() {
+            const id = $(this).data('id');
+            $(this).prop('checked', seleccion.has(id));
+        });
+    }
+
     // Manejar redirecciones a login u respuestas HTML en llamadas AJAX
-    $(document).ajaxError(function(event, jqxhr, settings, thrownError) {
+    $(document).ajaxError(function(event, jqxhr) {
         try {
             const ct = jqxhr.getResponseHeader('Content-Type') || '';
             const body = jqxhr.responseText || '';
             if (ct.indexOf('text/html') !== -1 || (typeof body === 'string' && body.toLowerCase().includes('<!doctype html'))) {
-                // Probablemente sesión expirada o redirect a login
                 Swal.fire({
                     title: 'Sesión inválida',
                     text: 'La sesión ha expirado o no está autenticado. Será redirigido al login.',
@@ -30,51 +52,47 @@ $(document).ready(function() {
             console.error('ajaxError handler falló', e);
         }
     });
+
     // Cargar materiales disponibles
-    // Inicializar Select2 para materiales con búsqueda dinámica
     function initSelectMaterial() {
         const el = $('#id_material');
         if (el.hasClass('select2-hidden-accessible')) {
             el.select2('destroy');
         }
 
-        // Intentar detectar qué endpoint usar: autenticado primero, si falla usar public
         const attemptAuthUrl = '/inventario/api/materiales';
         const fallbackUrl = '/inventario/api/materiales_public';
 
         $.ajax({ url: attemptAuthUrl, method: 'GET', dataType: 'json' }).done(function(resp) {
-            // si responde correctamente, inicializar select2 con endpoint autenticado
             const useUrl = (resp && resp.success) ? attemptAuthUrl : fallbackUrl;
             el.select2({
-            theme: 'bootstrap4',
-            placeholder: 'Seleccione un material',
-            allowClear: true,
-            width: '100%',
-            dropdownParent: $('#modalSolicitar'),
-            ajax: {
-                url: useUrl,
-                dataType: 'json',
-                delay: 250,
-                data: function(params) {
-                    return { q: params.term };
+                // theme: 'bootstrap4',
+                placeholder: 'Seleccione un material',
+                allowClear: true,
+                width: '100%',
+                dropdownParent: $('#modalSolicitar'),
+                ajax: {
+                    url: useUrl,
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return { q: params.term };
+                    },
+                    processResults: function(resp) {
+                        const results = (resp.data || []).map(function(m) {
+                            return { id: m.id, text: m.material + ' (Disponible: ' + m.cantidad_disponible + ')', disponible: m.cantidad_disponible };
+                        });
+                        return { results: results };
+                    }
                 },
-                processResults: function(resp) {
-                    const results = (resp.data || []).map(function(m) {
-                        return { id: m.id, text: m.material + ' (Disponible: ' + m.cantidad_disponible + ')', disponible: m.cantidad_disponible };
-                    });
-                    return { results: results };
-                }
-            },
-            templateResult: function(item) { return item.loading ? item.text : item.text; },
-            templateSelection: function(item) { return item.text || item.id; }
-        });
-            // limpiar selección
+                templateResult: function(item) { return item.loading ? item.text : item.text; },
+                templateSelection: function(item) { return item.text || item.id; }
+            });
             el.val(null).trigger('change');
             if (useUrl === fallbackUrl) {
                 console.warn('Se está utilizando el endpoint público de materiales (posible problema de sesión).');
             }
         }).fail(function() {
-            // Si la llamada al autenticado falla, inicializar con fallback público
             el.select2({
                 theme: 'bootstrap4',
                 placeholder: 'Seleccione un material',
@@ -110,9 +128,10 @@ $(document).ready(function() {
         }
 
         el.select2({
-            theme: 'bootstrap4',
-            placeholder: 'Seleccione un usuario',
+            // theme: 'bootstrap5',
+            placeholder: 'Seleccione uno o más usuarios',
             allowClear: true,
+            multiple: true,
             width: '100%',
             dropdownParent: $('#modalSolicitar'),
             ajax: {
@@ -124,38 +143,16 @@ $(document).ready(function() {
                 },
                 processResults: function(resp) {
                     const results = (resp.data || []).filter(u => u.activo).map(function(u) {
-                        return { id: u.id, text: u.nombres + ' (' + u.rol + ')', nombres: u.nombres, usuario: u.usuario };
+                        return { id: u.id, text: u.nombres + ' (' + u.rol + ')' };
                     });
                     return { results: results };
                 }
-            },
-            templateResult: function(item) { return item.loading ? item.text : item.text; },
-            templateSelection: function(item) { return item.text || item.id; }
-        });
-        el.val(null).trigger('change');
-        // verificar permisos y existencia de usuarios
-        $.ajax({
-            url: '/auth/api/usuarios',
-            method: 'GET',
-            dataType: 'json'
-        }).done(function(resp) {
-            if (!resp.success) {
-                console.warn('No autorizado para listar usuarios o error:', resp.message || resp);
-                // si no está autorizado, mostrar mensaje y desactivar select
-                $('#id_receptor').prop('disabled', true);
-            } else if (resp.data && resp.data.length === 0) {
-                console.info('No hay usuarios para asignar');
             }
-        }).fail(function(xhr) {
-            console.error('Error al solicitar /auth/api/usuarios', xhr);
-            Swal.fire('Error', 'No se pudieron cargar los usuarios. Compruebe permisos.', 'error');
-            $('#id_receptor').prop('disabled', true);
         });
     }
     
     // Actualizar info de disponibilidad
     $('#id_material').on('change', function() {
-        // obtener dato desde select2
         const d = $('#id_material').select2('data')[0];
         const disponible = d ? d.disponible : undefined;
         if (disponible !== undefined) {
@@ -165,7 +162,7 @@ $(document).ready(function() {
             $('#disponible-info').text('');
         }
     });
-    
+
     // Inicializar DataTable
     tabla = $('#tabla-asignaciones').DataTable({
         processing: true,
@@ -178,6 +175,14 @@ $(document).ready(function() {
             }
         },
         columns: [
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    return `<input type="checkbox" class="form-check-input select-asignacion" data-id="${row.id}" data-receptor-id="${row.receptor_id}" data-estatus="${row.estatus}">`;
+                }
+            },
             { data: 'id' },
             { data: 'material' },
             { data: 'cantidad' },
@@ -202,19 +207,15 @@ $(document).ready(function() {
                             <i class="bi bi-check-circle"></i></button> `;
                     }
                     
-                    
-                    
                     if (row.estatus === 'Pendiente' && row.receptor === window.usuarioActual) {
                         botones += `<button class="btn btn-sm btn-danger btn-cancelar" data-id="${row.id}" title="Cancelar">
                             <i class="bi bi-x-circle"></i></button>`;
                     }
 
-                    // Mostrar botón Devolver cuando esté aprobado y usuario tenga permiso
                     if (row.estatus === 'Aprobado' && window.puedeDevolver) {
                         botones += ` <button class="btn btn-sm btn-secondary btn-devolver" data-id="${row.id}" title="Devolver">
                             <i class="bi bi-arrow-counterclockwise"></i></button>`;
                     }
-                    // Botón recibo / imprimir
                     botones += ` <button class="btn btn-sm btn-outline-primary btn-print" data-id="${row.id}" title="Recibo">
                         <i class="bi bi-printer"></i></button>`;
                     
@@ -226,10 +227,11 @@ $(document).ready(function() {
             url: '/static/js/vendor/es-ES.json'
         }
     });
-    // No inicializar Select2 fuera del modal para evitar problemas de z-index/render
+    tabla.on('draw', sincronizarCheckboxes);
     
     // Filtro por estatus
     $('#filtro-estatus').on('change', function() {
+        limpiarSeleccion();
         tabla.ajax.reload();
     });
     
@@ -249,14 +251,14 @@ $(document).ready(function() {
         };
 
         if (window.puedeAsignar) {
-            const receptor = $('#id_receptor').val();
-            if (!receptor) {
-                Swal.fire('Error', 'Seleccione el usuario a quien asignar', 'error');
+            const receptores = $('#id_receptor').val();
+            if (!receptores || receptores.length === 0) {
+                Swal.fire('Error', 'Seleccione al menos un usuario a quien asignar', 'error');
                 return;
             }
-            data.id_usuario_receptor = receptor;
+            data.id_usuarios_receptores = receptores; // Enviar como lista
         }
-        
+
         $.ajax({
             url: '/asignaciones/api/solicitar',
             type: 'POST',
@@ -268,18 +270,14 @@ $(document).ready(function() {
                         title: 'Éxito',
                         text: response.message,
                         icon: 'success',
-                        timer: 2000,
-                        showConfirmButton: false
                     });
                     $('#modalSolicitar').modal('hide');
-                    $('#form-solicitar')[0].reset();
-                    tabla.ajax.reload();
                 } else {
                     Swal.fire('Error', response.message, 'error');
                 }
             },
-            error: function(xhr) {
-                Swal.fire('Error', xhr.responseJSON?.message || 'Error al enviar solicitud', 'error');
+            error: function() {
+                Swal.fire('Error', 'Ocurrió un error al enviar la solicitud', 'error');
             }
         });
     });
@@ -310,6 +308,7 @@ $(document).ready(function() {
                     Swal.fire('Éxito', response.message, 'success');
                     $('#modalAprobar').modal('hide');
                     $('#form-aprobar')[0].reset();
+                    limpiarSeleccion();
                     tabla.ajax.reload();
                 } else {
                     Swal.fire('Error', response.message, 'error');
@@ -340,6 +339,7 @@ $(document).ready(function() {
                     success: function(response) {
                         if (response.success) {
                             Swal.fire('Éxito', response.message, 'success');
+                            limpiarSeleccion();
                             tabla.ajax.reload();
                         } else {
                             Swal.fire('Error', response.message, 'error');
@@ -361,6 +361,41 @@ $(document).ready(function() {
         window.open(`/asignaciones/recibo/${id}`, '_blank');
     });
     
+    // Selección de filas para recibo múltiple
+    $(document).on('change', '.select-asignacion', function() {
+        const id = $(this).data('id');
+        const receptorId = Number($(this).data('receptor-id'));
+        const estatus = $(this).data('estatus');
+
+        if (this.checked) {
+            if (estatus !== 'Aprobado') {
+                this.checked = false;
+                Swal.fire('No permitido', 'Solo se pueden imprimir asignaciones aprobadas.', 'info');
+                return;
+            }
+            if (receptorSeleccionado !== null && receptorSeleccionado !== receptorId) {
+                this.checked = false;
+                Swal.fire('Seleccione mismo usuario', 'Solo se pueden agrupar asignaciones del mismo receptor.', 'warning');
+                return;
+            }
+            seleccion.add(id);
+            receptorSeleccionado = receptorSeleccionado !== null ? receptorSeleccionado : receptorId;
+        } else {
+            seleccion.delete(id);
+            if (seleccion.size === 0) {
+                receptorSeleccionado = null;
+            }
+        }
+        actualizarBotonSeleccion();
+    });
+
+    // Imprimir recibo múltiple
+    $('#btn-print-seleccion').on('click', function() {
+        if (seleccion.size === 0) return;
+        const ids = Array.from(seleccion).join(',');
+        window.open(`/asignaciones/recibo/lote?ids=${ids}`, '_blank');
+    });
+    
     // Cancelar solicitud
     $(document).on('click', '.btn-cancelar', function() {
         const id = $(this).data('id');
@@ -380,6 +415,7 @@ $(document).ready(function() {
                     success: function(response) {
                         if (response.success) {
                             Swal.fire('Éxito', response.message, 'success');
+                            limpiarSeleccion();
                             tabla.ajax.reload();
                         } else {
                             Swal.fire('Error', response.message, 'error');

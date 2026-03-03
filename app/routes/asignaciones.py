@@ -10,6 +10,15 @@ from datetime import datetime
 asignaciones_bp = Blueprint('asignaciones', __name__, url_prefix='/asignaciones')
 
 
+def _puede_ver_asignacion(asignacion, usuario):
+    """Valida si un usuario puede visualizar una asignación."""
+    return (
+        usuario.id == asignacion.id_usuario_receptor
+        or usuario.id == asignacion.id_usuario_asignador
+        or usuario.tiene_permiso('ver_inventario')
+    )
+
+
 @asignaciones_bp.route('/')
 @login_required
 def index():
@@ -79,6 +88,7 @@ def listar():
             'material': a.material.material,
             'cantidad': a.cantidad,
             'receptor': a.receptor.nombres if a.receptor else 'N/A',
+            'receptor_id': a.id_usuario_receptor,
             'asignador': a.asignador.nombres if a.asignador else 'N/A',
             'estatus': a.estatus,
             'fecha_solicitud': a.fecha_solicitud.strftime('%d-%m-%Y %H:%M'),
@@ -194,35 +204,34 @@ def solicitar():
                 'message': f'Cantidad no disponible. Máximo: {inventario.cantidad_disponible}'
             }), 400
 
-        # Determinar receptor: si el usuario puede asignar, puede indicar otro receptor
-        if current_user.tiene_permiso('asignar') and data.get('id_usuario_receptor'):
-            receptor_id = int(data['id_usuario_receptor'])
-        else:
-            receptor_id = current_user.id
+        # Determinar receptores: si el usuario puede asignar, puede indicar otros receptores
+        receptores_ids = data.get('id_usuarios_receptores', [])
+        if not isinstance(receptores_ids, list):
+            receptores_ids = [receptores_ids]
 
-        # Crear asignación
-        asignacion = Asignacion(
-            id_material=data['id_material'],
-            id_usuario_receptor=receptor_id,
-            cantidad=cantidad_solicitada,
-            estatus='Pendiente' if not current_user.tiene_permiso('asignar') else 'Aprobado',
-            observaciones=data.get('observaciones')
-        )
+        asignaciones = []
+        for receptor_id in receptores_ids:
+            asignacion = Asignacion(
+                id_material=data['id_material'],
+                id_usuario_receptor=int(receptor_id),
+                cantidad=cantidad_solicitada,
+                estatus='Pendiente' if not current_user.tiene_permiso('asignar') else 'Aprobado',
+                observaciones=data.get('observaciones')
+            )
 
-            # Si el usuario asigna directamente, registrar asignador y fecha.
-        if current_user.tiene_permiso('asignar'):
-            asignacion.id_usuario_asignador = current_user.id
-            from datetime import datetime
-            asignacion.fecha_aprobacion = datetime.utcnow()
-            # NOTA: no modificar `inventario.cantidad` aquí; la disponibilidad
-            # se calcula como `cantidad - sum(asignaciones aprobadas)`.
+            if current_user.tiene_permiso('asignar'):
+                asignacion.id_usuario_asignador = current_user.id
+                from datetime import datetime
+                asignacion.fecha_aprobacion = datetime.utcnow()
 
-        db.session.add(asignacion)
+            asignaciones.append(asignacion)
+            db.session.add(asignacion)
+
         db.session.commit()
 
         return jsonify({
             'success': True,
-            'message': 'Solicitud enviada correctamente' if not current_user.tiene_permiso('asignar') else 'Asignación creada y aprobada'
+            'message': f'Se crearon {len(asignaciones)} asignaciones correctamente.'
         })
     except Exception as e:
         db.session.rollback()
@@ -377,18 +386,65 @@ def recibo(id):
     asignacion = Asignacion.query.get_or_404(id)
 
     # Permitir ver a quien corresponda: receptor, asignador, supervisores
-    if not (current_user.id == asignacion.id_usuario_receptor or
-            current_user.id == asignacion.id_usuario_asignador or
-            current_user.tiene_permiso('ver_inventario')):
+    if not _puede_ver_asignacion(asignacion, current_user):
         flash('No autorizado para ver este recibo', 'danger')
         return redirect(url_for('asignaciones.index'))
 
-    html = render_template('asignaciones/recibo.html', a=asignacion)
+    html = render_template('asignaciones/recibo.html', a=asignacion, fecha=datetime.utcnow)
 
     # Si ?download=1 -> forzar descarga como .html para imprimir localmente
     if request.args.get('download') == '1':
         headers = {
             'Content-Disposition': f'attachment; filename=recibo_asignacion_{asignacion.id}.html'
+        }
+        return Response(html, mimetype='text/html', headers=headers)
+
+    return html
+
+
+@asignaciones_bp.route('/recibo/lote')
+@login_required
+def recibo_lote():
+    """Genera un recibo conjunto para varias asignaciones del mismo receptor."""
+    ids_param = request.args.get('ids', '')
+    try:
+        ids = [int(x) for x in ids_param.split(',') if x.strip().isdigit()]
+    except ValueError:
+        ids = []
+
+    if not ids:
+        flash('Debe seleccionar al menos una asignación para imprimir.', 'warning')
+        return redirect(url_for('asignaciones.index'))
+
+    asignaciones = Asignacion.query.filter(Asignacion.id.in_(ids)).order_by(Asignacion.fecha_solicitud.asc()).all()
+    if not asignaciones:
+        flash('No se encontraron asignaciones para imprimir.', 'warning')
+        return redirect(url_for('asignaciones.index'))
+
+    # Validar que todas existan
+    if len(asignaciones) != len(ids):
+        flash('Algunas asignaciones seleccionadas no existen.', 'danger')
+        return redirect(url_for('asignaciones.index'))
+
+    receptor_id = asignaciones[0].id_usuario_receptor
+    if any(a.id_usuario_receptor != receptor_id for a in asignaciones):
+        flash('Solo se pueden agrupar asignaciones del mismo receptor.', 'danger')
+        return redirect(url_for('asignaciones.index'))
+
+    # Autorizar y validar estatus
+    for a in asignaciones:
+        if not _puede_ver_asignacion(a, current_user):
+            flash('No autorizado para ver alguna de las asignaciones seleccionadas.', 'danger')
+            return redirect(url_for('asignaciones.index'))
+        if a.estatus != 'Aprobado':
+            flash(f'La asignación #{a.id} no está aprobada y no puede imprimirse en recibo.', 'warning')
+            return redirect(url_for('asignaciones.index'))
+
+    html = render_template('asignaciones/recibo.html', asignaciones=asignaciones)
+
+    if request.args.get('download') == '1':
+        headers = {
+            'Content-Disposition': 'attachment; filename=recibo_asignaciones_lote.html'
         }
         return Response(html, mimetype='text/html', headers=headers)
 

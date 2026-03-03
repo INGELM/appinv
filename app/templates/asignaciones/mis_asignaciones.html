@@ -6,6 +6,9 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-person-badge"></i> Mis Asignaciones</h2>
+        <button id="btn-print-mias" class="btn btn-outline-primary" disabled>
+            <i class="bi bi-printer"></i> Recibo selección
+        </button>
     </div>
 
     <div class="card">
@@ -13,6 +16,7 @@
             <table id="tabla-mis-asignaciones" class="table table-striped table-hover" style="width:100%">
                 <thead>
                     <tr>
+                        <th>Sel</th>
                         <th>ID</th>
                         <th>Material</th>
                         <th>Cantidad</th>

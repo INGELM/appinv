@@ -1,10 +1,11 @@
-from flask import Blueprint, render_template, jsonify, request, flash, redirect, url_for
+from flask import Blueprint, current_app, render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from app import db
 from app.models import Inventario, Asignacion
 from app.forms import InventarioForm
 from datetime import datetime
 import json
+import os
 
 inventario_bp = Blueprint('inventario', __name__, url_prefix='/inventario')
 
@@ -25,10 +26,10 @@ def listar():
     start = int(request.args.get('start', 0))
     length = int(request.args.get('length', 10))
     search_value = request.args.get('search[value]', '')
-    
+
     # Query base
     query = Inventario.query.filter_by(activo=True)
-    
+
     # Filtrar por búsqueda
     if search_value:
         query = query.filter(
@@ -40,16 +41,49 @@ def listar():
                 Inventario.tipo.ilike(f'%{search_value}%')
             )
         )
-    
+
     # Contar total registros
     total_records = query.count()
-    
+
+    # Ordenamiento (DataTables serverSide)
+    order_col_idx = request.args.get('order[0][column]')
+    order_dir = request.args.get('order[0][dir]', 'asc')
+    # Mapeo de índices de columna a atributos del modelo
+    col_map = {
+        '0': Inventario.id,
+        '1': Inventario.fecha_ingreso,
+        '2': Inventario.num_proceso,
+        '3': Inventario.proveedor,
+        '4': Inventario.material,
+        '5': Inventario.descripcion,
+        '6': Inventario.cantidad,
+        '7': Inventario.cantidad_disponible,
+        '8': Inventario.tipo,
+        '9': Inventario.foto1,
+        '10': Inventario.foto2,
+        # '11' corresponde a 'asignado_a' calculado; usamos material como fallback
+        '11': Inventario.material
+    }
+
+    if order_col_idx and order_col_idx in col_map:
+        col = col_map[order_col_idx]
+        if order_dir == 'desc':
+            query = query.order_by(col.desc())
+        else:
+            query = query.order_by(col.asc())
+    else:
+        # Orden por defecto
+        query = query.order_by(Inventario.fecha_ingreso.desc())
+
     # Obtener datos con paginación
-    inventarios = query.order_by(Inventario.fecha_ingreso.desc()).offset(start).limit(length).all()
-    
+    inventarios = query.offset(start).limit(length).all()
+
     # Preparar datos para DataTables
     data = []
     for inv in inventarios:
+        # Obtener lista de usuarios asignados (estatus 'Aprobado')
+        asignados = [a.receptor.nombres for a in inv.asignaciones.filter_by(estatus='Aprobado').all()]
+        asignado_a = ', '.join(asignados) if asignados else ''
         data.append({
             'id': inv.id,
             'fecha_ingreso': inv.fecha_ingreso.strftime('%d-%m-%Y'),
@@ -57,13 +91,16 @@ def listar():
             'proveedor': inv.proveedor or '',
             'material': inv.material,
             'descripcion': inv.descripcion or '',
+            'asignado_a': asignado_a,
             'cantidad': inv.cantidad,
             'cantidad_disponible': inv.cantidad_disponible,
             'cantidad_asignada': inv.cantidad_asignada,
             'tipo': inv.tipo,
-            'observaciones': inv.observaciones or ''
+            'observaciones': inv.observaciones or '',
+            'foto1': inv.foto1 or '',
+            'foto2': inv.foto2 or ''
         })
-    
+
     return jsonify({
         'draw': draw,
         'recordsTotal': total_records,
@@ -77,26 +114,31 @@ def listar():
 def crear():
     """API para crear nuevo material en el inventario"""
     try:
-        data = request.get_json()
-        
+        # Manejo de JSON o multipart/form-data
+        data = {}
+        if request.content_type and request.content_type.startswith('application/json'):
+            data = request.get_json() or {}
+        elif request.content_type and request.content_type.startswith('multipart/form-data'):
+            data = request.form.to_dict() or {}
+
         # Validar datos requeridos
         if not data.get('material') or not data.get('cantidad') or not data.get('tipo'):
             return jsonify({'success': False, 'message': 'Datos incompletos'}), 400
-        
+
         inventario = Inventario(
             fecha_ingreso=datetime.utcnow(),
             num_proceso=data.get('num_proceso'),
             proveedor=data.get('proveedor'),
             material=data['material'],
-                descripcion=data.get('descripcion'),
+            descripcion=data.get('descripcion'),
             cantidad=int(data['cantidad']),
             tipo=data['tipo'],
             observaciones=data.get('observaciones')
         )
-        
+
         db.session.add(inventario)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Material registrado correctamente',
@@ -116,8 +158,13 @@ def editar(id):
     """API para editar material del inventario"""
     try:
         inventario = Inventario.query.get_or_404(id)
-        data = request.get_json()
-        
+        # Manejo de datos JSON o multipart/form-data
+        data = {}  # Inicialización predeterminada para evitar errores
+        if request.content_type.startswith('application/json'):
+            data = request.get_json() or {}
+        elif request.content_type.startswith('multipart/form-data'):
+            data = request.form.to_dict() or {}
+
         # Actualizar campos
         if 'material' in data:
             inventario.material = data['material']
@@ -133,9 +180,76 @@ def editar(id):
             inventario.proveedor = data['proveedor']
         if 'observaciones' in data:
             inventario.observaciones = data['observaciones']
-        
+
+        # Manejo de archivos subidos
+        if 'foto1' in request.files:
+            foto1 = request.files['foto1']
+            if foto1:
+                print(f"Received file foto1: {foto1.filename}")
+                filename = f"material_{id}_foto1_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{foto1.filename.split('.')[-1]}"
+                filepath = os.path.join(
+                    current_app.config['UPLOAD_FOLDER'], filename)
+                print(f"Saving foto1 to: {filepath}")
+                foto1.save(filepath)
+                inventario.foto1 = filename
+
+        # Permitir marcar eliminación de foto1
+        if data.get('delete_foto1') in ('1', 'true', 'True'):
+            if inventario.foto1:
+                try:
+                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], inventario.foto1)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        print(f"Removed file foto1: {file_path}")
+                except Exception as e:
+                    print(f"Error removing foto1 file: {e}")
+            inventario.foto1 = None
+
+        if 'foto2' in request.files:
+            foto2 = request.files['foto2']
+            if foto2:
+                print(f"Received file foto2: {foto2.filename}")
+                filename = f"material_{id}_foto2_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{foto2.filename.split('.')[-1]}"
+                filepath = os.path.join(
+                    current_app.config['UPLOAD_FOLDER'], filename)
+                print(f"Saving foto2 to: {filepath}")
+                foto2.save(filepath)
+                inventario.foto2 = filename
+
+        # Permitir marcar eliminación de foto2
+        if data.get('delete_foto2') in ('1', 'true', 'True'):
+            if inventario.foto2:
+                try:
+                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], inventario.foto2)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        print(f"Removed file foto2: {file_path}")
+                except Exception as e:
+                    print(f"Error removing foto2 file: {e}")
+            inventario.foto2 = None
+
+        # Depuración: Confirmar contenido de 'data'
+        print(f"Datos procesados: {data}")
+
+        # Depuración: Verificar archivo foto1
+        if 'foto1' in request.files:
+            foto1 = request.files['foto1']
+            print(f"Archivo foto1 recibido: {foto1.filename}")
+        else:
+            print("Archivo foto1 no recibido")
+
+        # Depuración: Verificar archivo foto2
+        if 'foto2' in request.files:
+            foto2 = request.files['foto2']
+            print(f"Archivo foto2 recibido: {foto2.filename}")
+        else:
+            print("Archivo foto2 no recibido")
+
+        # Depuración: Verificar antes de commit
+        print(f"Datos antes de commit: {inventario}")
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Material actualizado correctamente'
@@ -153,9 +267,11 @@ def eliminar(id):
         inventario = Inventario.query.get_or_404(id)
         # Depuración: contar asignaciones activas y mostrar info
         active_count = inventario.asignaciones.filter(
-            db.or_(Asignacion.estatus == 'Pendiente', Asignacion.estatus == 'Aprobado')
+            db.or_(Asignacion.estatus == 'Pendiente',
+                   Asignacion.estatus == 'Aprobado')
         ).count()
-        print(f"eliminar: id={id}, inventario.activo={inventario.activo}, active_assignments={active_count}")
+        print(
+            f"eliminar: id={id}, inventario.activo={inventario.activo}, active_assignments={active_count}")
 
         # Verificar si hay asignaciones vinculadas
         if not inventario.puede_eliminarse():
@@ -164,11 +280,11 @@ def eliminar(id):
                 'message': 'No se puede eliminar el material porque tiene asignaciones activas',
                 'active_assignments': active_count
             }), 400
-        
+
         # Desactivar en lugar de eliminar (soft delete)
         inventario.activo = False
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': 'Material eliminado correctamente'
@@ -183,7 +299,7 @@ def eliminar(id):
 def obtener(id):
     """API para obtener un material específico"""
     inventario = Inventario.query.get_or_404(id)
-    
+
     return jsonify({
         'success': True,
         'data': {
@@ -196,7 +312,10 @@ def obtener(id):
             'cantidad_disponible': inventario.cantidad_disponible,
             'cantidad_asignada': inventario.cantidad_asignada,
             'tipo': inventario.tipo,
-            'observaciones': inventario.observaciones
+            'observaciones': inventario.observaciones,
+            'foto1': inventario.foto1 or '',
+            'foto2': inventario.foto2 or '',
+            'asignado_a': ', '.join([a.receptor.nombres for a in inventario.asignaciones.filter_by(estatus='Aprobado').all()])
         }
     })
 
@@ -250,3 +369,71 @@ def listar_materiales_public():
             })
 
     return jsonify({'success': True, 'data': data})
+
+
+@inventario_bp.route('/api/subir_fotos/<int:id>', methods=['POST'])
+@login_required
+def subir_fotos(id):
+    """API para subir fotos de un material"""
+    try:
+        inventario = Inventario.query.get_or_404(id)
+
+        # Asegurar que 'data' esté definido y registrar su contenido
+        data = {}
+        if request.content_type and request.content_type.startswith('application/json'):
+            data = request.get_json() or {}
+        elif request.content_type and request.content_type.startswith('multipart/form-data'):
+            data = request.form.to_dict() or {}
+        print(f"Datos procesados (subir_fotos): {data}")
+
+        # Manejo de archivos subidos
+        if 'foto1' in request.files:
+            foto1 = request.files['foto1']
+            if foto1:
+                print(f"Received file foto1: {foto1.filename}")
+                filename = f"material_{id}_foto1_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{foto1.filename.split('.')[-1]}"
+                filepath = os.path.join(
+                    current_app.config['UPLOAD_FOLDER'], filename)
+                print(f"Saving foto1 to: {filepath}")
+                foto1.save(filepath)
+                inventario.foto1 = filename
+
+        if 'foto2' in request.files:
+            foto2 = request.files['foto2']
+            if foto2:
+                print(f"Received file foto2: {foto2.filename}")
+                filename = f"material_{id}_foto2_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{foto2.filename.split('.')[-1]}"
+                filepath = os.path.join(
+                    current_app.config['UPLOAD_FOLDER'], filename)
+                print(f"Saving foto2 to: {filepath}")
+                foto2.save(filepath)
+                inventario.foto2 = filename
+
+        # Depuración: Verificar datos recibidos
+        print(f"Editar inventario: ID={id}")
+        print(f"Content-Type: {request.content_type}")
+        print(f"Datos recibidos: {data}")
+
+        # Depuración: Verificar archivo foto1
+        if 'foto1' in request.files:
+            foto1 = request.files['foto1']
+            print(f"Archivo foto1 recibido: {foto1.filename}")
+        else:
+            print("Archivo foto1 no recibido")
+
+        # Depuración: Verificar archivo foto2
+        if 'foto2' in request.files:
+            foto2 = request.files['foto2']
+            print(f"Archivo foto2 recibido: {foto2.filename}")
+        else:
+            print("Archivo foto2 no recibido")
+
+        # Depuración: Verificar antes de commit
+        print(f"Datos antes de commit: {inventario}")
+
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Fotos subidas correctamente'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500

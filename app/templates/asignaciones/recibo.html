@@ -1,12 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Recibo Asignación #{{ a.id }}{% endblock %}
+{% set items = asignaciones if asignaciones is defined else [a] %}
+{% set first = items[0] %}
+{% block title %}Recibo Asignación{% if items|length == 1 %} #{{ first.id }}{% else %} (múltiple){% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
+  /* Reduce browser print margins where supported and hide page chrome when possible.
+     Note: Browsers may still add their own headers/footers (title, URL). Disable
+     "Encabezados y pies" / "Headers and footers" in the print dialog to remove them. */
+  @page { margin: 0; size: auto; }
+  html, body { height: 100%; }
+
   @media print {
+    @page { margin: 0; }
+    body { margin: 0; -webkit-print-color-adjust: exact; }
     .no-print { display: none !important; }
+    .recibo { margin: 0; padding: 20px; border: none; }
   }
+
   .recibo { max-width: 800px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; }
   .firma { height: 80px; border-bottom: 1px solid #000; margin-bottom: 8px; }
 </style>
@@ -21,54 +33,76 @@
 <div class="recibo bg-white">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-      <h4>Constancia de Entrega</h4>
-      <small>Número: {{ a.id }}</small>
+      <h4><strong>Constancia de Entrega</strong></h4>
+      <!--<small>Número{% if items|length > 1 %}s{% endif %}: {% if items|length == 1 %}{{ first.id }}{% else %}{{ items|map(attribute='id')|list|join(', ') }}{% endif %}</small>-->
     </div>
     <div class="text-end">
-      <strong>Fecha solicitud:</strong> {{ a.fecha_solicitud.strftime('%d-%m-%Y %H:%M') }}<br>
-      {% if a.fecha_aprobacion %}
-      <strong>Fecha aprobación:</strong> {{ a.fecha_aprobacion.strftime('%d-%m-%Y %H:%M') }}
+      {% if first.fecha_aprobacion %}
+      <strong>Fecha:</strong> {{ first.fecha_aprobacion.strftime('%d-%m-%Y') }}
       {% endif %}
     </div>
   </div>
   <table class="table table-bordered">
     <thead>
       <tr>
+        <th>ID</th>
         <th>MATERIAL</th>
         <th>TIPO</th>
         <th>CANT</th>
       </tr>
     </thead>
     <tbody>
+      {% for item in items %}
       <tr>
-        <td>{{ a.material.material }}</td>
-        <td>{{ a.material.tipo }}</td>
-        <td class="text-center">{{ a.cantidad }}</td>
+        <td class="text-center">{{ item.id }}</td>
+        <td>{{ item.material.material }}</td>
+        <td>{{ item.material.tipo }}</td>
+        <td class="text-center">{{ item.cantidad }}</td>
       </tr>
+      {% endfor %}
     </tbody>
   </table>
 
-  <p><strong>Observaciones:</strong> {{ a.observaciones or '---' }}</p>
+  {% set ns = namespace(hay_obs=false) %}
+  {% for item in items %}
+    {% if item.observaciones %}{% set ns.hay_obs = true %}{% endif %}
+  {% endfor %}
 
-  <p>
-    Constancia de entrega del material listado, al trabajador: <strong>{{ a.receptor.nombres if a.receptor else '' }} [{{ a.receptor.usuario if a.receptor else '' }}]</strong>, quien se compromete a hacer un uso adecuado de estos.
+  {% if ns.hay_obs %}
+    <p><strong>Observaciones:</strong></p>
+    <ul>
+      {% for item in items if item.observaciones %}
+      <li>#{{ item.id }}: {{ item.observaciones }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p><strong>Observaciones:</strong> ---</p>
+  {% endif %}
+
+  <p class="text-justify">
+    Constancia de entrega del material listado, al trabajador: <strong>{{ first.receptor.nombres if first.receptor else '' }} [{{ first.receptor.usuario if first.receptor else '' }}]</strong>, quien se compromete a recibir a conformidad el material y a dar uso adecuado, y el cual debe ser destinado <strong>única y estrictamente para el desempeño de las actividades inherentes a la empresa,</strong> el trabajador se compromete a devolverlo cuando le sea solicitado o al término de la relación laboral.
   </p>
 
   <div class="row mt-4">
     <div class="col-6 text-center">
       <div class="firma"></div>
       <div><strong>Recibido por</strong></div>
-      <div>{{ a.receptor.nombres if a.receptor else '' }}</div>
+      <div>{{ first.receptor.nombres if first.receptor else '' }}</div>
     </div>
     <div class="col-6 text-center">
       <div class="firma"></div>
       <div><strong>Entregado por</strong></div>
-      <div>{{ a.asignador.nombres if a.asignador else '' }}</div>
+      <div>{{ first.asignador.nombres if first.asignador else '' }}</div>
     </div>
   </div>
 
   <div class="mt-4 no-print">
-    <a href="{{ url_for('asignaciones.recibo', id=a.id, download=1) }}" class="btn btn-sm btn-outline-secondary">Descargar HTML</a>
+    <p class="mb-2 text-muted" style="font-size:0.9rem">Nota: para imprimir sin encabezados ni pies (título/URL), desactive la opción "Encabezados y pies" en el diálogo de impresión del navegador.</p>
+    {% if items|length == 1 %}
+      <a href="{{ url_for('asignaciones.recibo', id=first.id, download=1) }}" class="btn btn-sm btn-outline-secondary">Descargar HTML</a>
+    {% else %}
+      <a href="{{ url_for('asignaciones.recibo_lote', ids=items|map(attribute='id')|list|join(','), download=1) }}" class="btn btn-sm btn-outline-secondary">Descargar HTML</a>
+    {% endif %}
     <button onclick="window.print()" class="btn btn-sm btn-primary">Imprimir</button>
     <a href="{{ url_for('asignaciones.index') }}" class="btn btn-sm btn-link">Volver</a>
   </div>
