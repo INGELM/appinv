@@ -132,6 +132,8 @@ $(document).ready(function() {
             placeholder: 'Seleccione uno o más usuarios',
             allowClear: true,
             multiple: true,
+            tags: true,
+            tokenSeparators: [','],
             width: '100%',
             dropdownParent: $('#modalSolicitar'),
             ajax: {
@@ -216,7 +218,7 @@ $(document).ready(function() {
                         botones += ` <button class="btn btn-sm btn-secondary btn-devolver" data-id="${row.id}" title="Devolver">
                             <i class="bi bi-arrow-counterclockwise"></i></button>`;
                     }
-                    botones += ` <button class="btn btn-sm btn-outline-primary btn-print" data-id="${row.id}" title="Recibo">
+                    botones += ` <button class="btn btn-sm btn-outline-primary btn-print" data-id="${row.id}" data-estatus="${row.estatus}" title="Recibo">
                         <i class="bi bi-printer"></i></button>`;
                     
                     return botones;
@@ -251,12 +253,16 @@ $(document).ready(function() {
         };
 
         if (window.puedeAsignar) {
-            const receptores = $('#id_receptor').val();
-            if (!receptores || receptores.length === 0) {
-                Swal.fire('Error', 'Seleccione al menos un usuario a quien asignar', 'error');
+            const receptores = $('#id_receptor').val() || [];
+            if (receptores.length === 0) {
+                Swal.fire('Error', 'Seleccione al menos un usuario o ingrese un nombre externo', 'error');
                 return;
             }
-            data.id_usuarios_receptores = receptores; // Enviar como lista
+            // Separar ids numéricos de nombres externos (tags)
+            const ids = receptores.filter(r => /^\d+$/.test(r)).map(Number);
+            const externos = receptores.filter(r => !/^\d+$/.test(r)).map(s => s.trim()).filter(Boolean);
+            data.id_usuarios_receptores = ids;
+            if (externos.length) data.receptores_externos = externos;
         }
 
         $.ajax({
@@ -355,16 +361,21 @@ $(document).ready(function() {
         });
     });
 
-    // Abrir recibo en nueva pestaña para imprimir/descargar
+    // Abrir recibo/devolución en nueva pestaña para imprimir/descargar
     $(document).on('click', '.btn-print', function() {
         const id = $(this).data('id');
-        window.open(`/asignaciones/recibo/${id}`, '_blank');
+        const estatus = $(this).data('estatus');
+        if (estatus === 'Reintegrado') {
+            window.open(`/asignaciones/devolucion/${id}`, '_blank');
+        } else {
+            window.open(`/asignaciones/recibo/${id}`, '_blank');
+        }
     });
     
     // Selección de filas para recibo múltiple
     $(document).on('change', '.select-asignacion', function() {
         const id = $(this).data('id');
-        const receptorId = Number($(this).data('receptor-id'));
+        const receptorIdRaw = String($(this).data('receptor-id'));
         const estatus = $(this).data('estatus');
 
         if (this.checked) {
@@ -373,13 +384,13 @@ $(document).ready(function() {
                 Swal.fire('No permitido', 'Solo se pueden imprimir asignaciones aprobadas.', 'info');
                 return;
             }
-            if (receptorSeleccionado !== null && receptorSeleccionado !== receptorId) {
+            if (receptorSeleccionado !== null && receptorSeleccionado !== receptorIdRaw) {
                 this.checked = false;
                 Swal.fire('Seleccione mismo usuario', 'Solo se pueden agrupar asignaciones del mismo receptor.', 'warning');
                 return;
             }
             seleccion.add(id);
-            receptorSeleccionado = receptorSeleccionado !== null ? receptorSeleccionado : receptorId;
+            receptorSeleccionado = receptorSeleccionado !== null ? receptorSeleccionado : receptorIdRaw;
         } else {
             seleccion.delete(id);
             if (seleccion.size === 0) {

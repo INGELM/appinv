@@ -83,12 +83,17 @@ def listar():
     
     data = []
     for a in asignaciones:
+        receptor_display = a.receptor.nombres if a.receptor else (a.receptor_nombre or 'N/A')
+        if a.id_usuario_receptor:
+            receptor_id_out = f'u:{a.id_usuario_receptor}'
+        else:
+            receptor_id_out = f'e:{(a.receptor_nombre or '').strip().lower()}'
         data.append({
             'id': a.id,
             'material': a.material.material,
             'cantidad': a.cantidad,
-            'receptor': a.receptor.nombres if a.receptor else 'N/A',
-            'receptor_id': a.id_usuario_receptor,
+            'receptor': receptor_display,
+            'receptor_id': receptor_id_out,
             'asignador': a.asignador.nombres if a.asignador else 'N/A',
             'estatus': a.estatus,
             'fecha_solicitud': a.fecha_solicitud.strftime('%d-%m-%Y %H:%M'),
@@ -209,16 +214,46 @@ def solicitar():
         if not isinstance(receptores_ids, list):
             receptores_ids = [receptores_ids]
 
+        receptores_externos = data.get('receptores_externos', [])
+        if not isinstance(receptores_externos, list):
+            receptores_externos = [receptores_externos]
+
         asignaciones = []
+        # Receptores registrados
         for receptor_id in receptores_ids:
+            try:
+                rid = int(receptor_id)
+            except Exception:
+                continue
             asignacion = Asignacion(
                 id_material=data['id_material'],
-                id_usuario_receptor=int(receptor_id),
+                id_usuario_receptor=rid,
                 cantidad=cantidad_solicitada,
                 estatus='Pendiente' if not current_user.tiene_permiso('asignar') else 'Aprobado',
                 observaciones=data.get('observaciones')
             )
 
+            if current_user.tiene_permiso('asignar'):
+                asignacion.id_usuario_asignador = current_user.id
+                from datetime import datetime
+                asignacion.fecha_aprobacion = datetime.utcnow()
+
+            asignaciones.append(asignacion)
+            db.session.add(asignacion)
+
+        # Receptores externos (no registrados)
+        for nombre_ext in receptores_externos:
+            nombre_ext = (nombre_ext or '').strip()
+            if not nombre_ext:
+                continue
+            asignacion = Asignacion(
+                id_material=data['id_material'],
+                id_usuario_receptor=None,
+                receptor_nombre=nombre_ext,
+                cantidad=cantidad_solicitada,
+                estatus='Pendiente' if not current_user.tiene_permiso('asignar') else 'Aprobado',
+                observaciones=data.get('observaciones')
+            )
             if current_user.tiene_permiso('asignar'):
                 asignacion.id_usuario_asignador = current_user.id
                 from datetime import datetime
@@ -402,6 +437,34 @@ def recibo(id):
     return html
 
 
+@asignaciones_bp.route('/devolucion/<int:id>')
+@login_required
+def devolucion(id):
+    """Genera un formato imprimible/descargable de devolución (reintegración)"""
+    asignacion = Asignacion.query.get_or_404(id)
+
+    # Permitir ver a quien corresponda: receptor, asignador, supervisores
+    if not _puede_ver_asignacion(asignacion, current_user):
+        flash('No autorizado para ver este comprobante', 'danger')
+        return redirect(url_for('asignaciones.index'))
+
+    # Solo si ya fue reintegrado
+    if asignacion.estatus != 'Reintegrado':
+        flash('La asignación no está marcada como reintegrada', 'warning')
+        return redirect(url_for('asignaciones.index'))
+
+    html = render_template('asignaciones/devolucion.html', a=asignacion, fecha=datetime.utcnow)
+
+    # Si ?download=1 -> forzar descarga como .html para imprimir localmente
+    if request.args.get('download') == '1':
+        headers = {
+            'Content-Disposition': f'attachment; filename=devolucion_asignacion_{asignacion.id}.html'
+        }
+        return Response(html, mimetype='text/html', headers=headers)
+
+    return html
+
+
 @asignaciones_bp.route('/recibo/lote')
 @login_required
 def recibo_lote():
@@ -426,8 +489,14 @@ def recibo_lote():
         flash('Algunas asignaciones seleccionadas no existen.', 'danger')
         return redirect(url_for('asignaciones.index'))
 
-    receptor_id = asignaciones[0].id_usuario_receptor
-    if any(a.id_usuario_receptor != receptor_id for a in asignaciones):
+    # Permitir agrupar por el mismo receptor, ya sea usuario registrado o receptor externo
+    def receptor_key(a):
+        if a.id_usuario_receptor:
+            return ('user', a.id_usuario_receptor)
+        return ('ext', (a.receptor_nombre or '').strip().lower())
+
+    first_key = receptor_key(asignaciones[0])
+    if any(receptor_key(a) != first_key for a in asignaciones):
         flash('Solo se pueden agrupar asignaciones del mismo receptor.', 'danger')
         return redirect(url_for('asignaciones.index'))
 

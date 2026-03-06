@@ -80,14 +80,14 @@
   {% endif %}
 
   <p class="text-justify">
-    Constancia de entrega del material listado, al trabajador: <strong>{{ first.receptor.nombres if first.receptor else '' }} [{{ first.receptor.usuario if first.receptor else '' }}]</strong>, quien se compromete a recibir a conformidad el material y a dar uso adecuado, y el cual debe ser destinado <strong>única y estrictamente para el desempeño de las actividades inherentes a la empresa,</strong> el trabajador se compromete a devolverlo cuando le sea solicitado o al término de la relación laboral.
+    Constancia de entrega del material listado, al trabajador: <strong>{{ first.receptor.nombres if first.receptor else (first.receptor_nombre or '') }}{% if first.receptor %} [{{ first.receptor.usuario }}]{% endif %}</strong>, quien se compromete a recibir a conformidad el material y a dar uso adecuado, y el cual debe ser destinado <strong>única y estrictamente para el desempeño de las actividades inherentes a la empresa,</strong> el trabajador se compromete a devolverlo cuando le sea solicitado o al término de la relación laboral.
   </p>
 
   <div class="row mt-4">
     <div class="col-6 text-center">
       <div class="firma"></div>
       <div><strong>Recibido por</strong></div>
-      <div>{{ first.receptor.nombres if first.receptor else '' }}</div>
+      <div>{{ first.receptor.nombres if first.receptor else (first.receptor_nombre or '') }}</div>
     </div>
     <div class="col-6 text-center">
       <div class="firma"></div>

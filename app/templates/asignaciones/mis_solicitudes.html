@@ -62,9 +62,15 @@
                     {% if current_user.tiene_permiso('asignar') %}
                     <div class="mb-3">
                         <label for="id_receptor" class="form-label">Asignar A *</label>
-                        <select class="form-select" id="id_receptor" required>
+                        <select class="form-select" id="id_receptor">
                             <option value="">Seleccione un usuario</option>
                         </select>
+                        <div class="form-text">Si el receptor no está en el sistema, puede escribir su nombre en el campo inferior.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_receptor_external" class="form-label">Nombre externo (opcional)</label>
+                        <input type="text" class="form-control" id="id_receptor_external" placeholder="Nombre del receptor externo">
+                        <div class="form-text">Use este campo cuando la persona no tenga cuenta en el sistema.</div>
                     </div>
                     {% endif %}
 

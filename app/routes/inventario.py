@@ -27,23 +27,32 @@ def listar():
     length = int(request.args.get('length', 10))
     search_value = request.args.get('search[value]', '')
 
-    # Query base
-    query = Inventario.query.filter_by(activo=True)
+    # Query base (activos)
+    base_query = Inventario.query.filter_by(activo=True)
 
-    # Filtrar por búsqueda
+    # Contar total registros sin filtrar (para DataTables)
+    total_records = base_query.count()
+
+    # Aplicar filtros de búsqueda: tokenizar y requerir que cada token aparezca
+    # en al menos uno de los campos (AND entre tokens, OR entre campos)
+    query = base_query
     if search_value:
-        query = query.filter(
-            db.or_(
-                Inventario.material.ilike(f'%{search_value}%'),
-                Inventario.descripcion.ilike(f'%{search_value}%'),
-                Inventario.proveedor.ilike(f'%{search_value}%'),
-                Inventario.num_proceso.ilike(f'%{search_value}%'),
-                Inventario.tipo.ilike(f'%{search_value}%')
+        # Normalizar espacios y dividir en tokens
+        tokens = [t.strip() for t in search_value.split() if t.strip()]
+        for tok in tokens:
+            like_tok = f"%{tok}%"
+            query = query.filter(
+                db.or_(
+                    Inventario.material.ilike(like_tok),
+                    Inventario.descripcion.ilike(like_tok),
+                    Inventario.proveedor.ilike(like_tok),
+                    Inventario.num_proceso.ilike(like_tok),
+                    Inventario.tipo.ilike(like_tok)
+                )
             )
-        )
 
-    # Contar total registros
-    total_records = query.count()
+    # Contar registros filtrados
+    filtered_records = query.count()
 
     # Ordenamiento (DataTables serverSide)
     order_col_idx = request.args.get('order[0][column]')
@@ -81,9 +90,9 @@ def listar():
     # Preparar datos para DataTables
     data = []
     for inv in inventarios:
-        # Obtener lista de usuarios asignados (estatus 'Aprobado')
-        asignados = [a.receptor.nombres for a in inv.asignaciones.filter_by(estatus='Aprobado').all()]
-        asignado_a = ', '.join(asignados) if asignados else ''
+        # Obtener lista de usuarios asignados (estatus 'Aprobado'), soportando receptores externos
+        asignados = [ (a.receptor.nombres if a.receptor else (a.receptor_nombre or '')) for a in inv.asignaciones.filter_by(estatus='Aprobado').all() ]
+        asignado_a = ', '.join([s for s in asignados if s]) if asignados else ''
         data.append({
             'id': inv.id,
             'fecha_ingreso': inv.fecha_ingreso.strftime('%d-%m-%Y'),
@@ -104,7 +113,7 @@ def listar():
     return jsonify({
         'draw': draw,
         'recordsTotal': total_records,
-        'recordsFiltered': total_records,
+        'recordsFiltered': filtered_records,
         'data': data
     })
 
@@ -315,7 +324,7 @@ def obtener(id):
             'observaciones': inventario.observaciones,
             'foto1': inventario.foto1 or '',
             'foto2': inventario.foto2 or '',
-            'asignado_a': ', '.join([a.receptor.nombres for a in inventario.asignaciones.filter_by(estatus='Aprobado').all()])
+            'asignado_a': ', '.join([ (a.receptor.nombres if a.receptor else (a.receptor_nombre or '')) for a in inventario.asignaciones.filter_by(estatus='Aprobado').all() ])
         }
     })
 

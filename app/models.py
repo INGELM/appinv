@@ -90,7 +90,8 @@ class Asignacion(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     id_material = db.Column(db.Integer, db.ForeignKey('inventario.id'), nullable=False)
-    id_usuario_receptor = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+    id_usuario_receptor = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
+    receptor_nombre = db.Column(db.String(200), nullable=True)
     id_usuario_asignador = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
     cantidad = db.Column(db.Integer, nullable=False)
     estatus = db.Column(db.String(20), default='Pendiente')  # Pendiente, Aprobado, Rechazado

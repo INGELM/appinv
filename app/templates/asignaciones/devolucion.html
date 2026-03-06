@@ -1,0 +1,83 @@
+
+{% extends "base.html" %}
+
+{% set item = a %}
+{% block title %}Constancia de Devolución #{{ item.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  @page { margin: 0; size: auto; }
+  html, body { height: 100%; }
+  @media print {
+    @page { margin: 0; }
+    body { margin: 0; -webkit-print-color-adjust: exact; }
+    .no-print { display: none !important; }
+    .recibo { margin: 0; padding: 20px; border: none; }
+  }
+  .recibo { max-width: 800px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; }
+  .firma { height: 80px; border-bottom: 1px solid #000; margin-bottom: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="width:100%; overflow:hidden;">
+  <img src="{{ url_for('static', filename='img/CINTILLOFICIAL.JPG') }}" alt="Cintillo" style="display:block; width:100vw; margin-left:calc(50% - 50vw); height:auto; max-height:140px; object-fit:cover;">
+</div>
+
+<div class="recibo bg-white">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h4><strong>Constancia de Devolución</strong></h4>
+    </div>
+    <div class="text-end">
+      {% if item.fecha_devolucion %}
+      <strong>Fecha:</strong> {{ item.fecha_devolucion.strftime('%d-%m-%Y') }}
+      {% endif %}
+    </div>
+  </div>
+
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>MATERIAL</th>
+        <th>TIPO</th>
+        <th>CANT</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="text-center">{{ item.id }}</td>
+        <td>{{ item.material.material }}</td>
+        <td>{{ item.material.tipo }}</td>
+        <td class="text-center">{{ item.cantidad }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="text-justify">
+    Constancia de devolución del material por parte del trabajador: <strong>{{ item.receptor.nombres if item.receptor else (item.receptor_nombre or '') }}{% if item.receptor %} [{{ item.receptor.usuario }}]{% endif %}</strong>. El material ha sido reintegrado al inventario y recibido por: <strong>{{ item.asignador.nombres if item.asignador else '' }}</strong>.
+  </p>
+
+  <div class="row mt-4">
+    <div class="col-6 text-center">
+      <div class="firma"></div>
+      <div><strong>Devuelto por</strong></div>
+      <div>{{ item.receptor.nombres if item.receptor else (item.receptor_nombre or '') }}</div>
+    </div>
+    <div class="col-6 text-center">
+      <div class="firma"></div>
+      <div><strong>Recibido por</strong></div>
+      <div>{{ item.asignador.nombres if item.asignador else '' }}</div>
+    </div>
+  </div>
+
+  <div class="mt-4 no-print">
+    <p class="mb-2 text-muted" style="font-size:0.9rem">Nota: para imprimir sin encabezados ni pies (título/URL), desactive la opción "Encabezados y pies" en el diálogo de impresión del navegador.</p>
+    <a href="{{ url_for('asignaciones.devolucion', id=item.id, download=1) }}" class="btn btn-sm btn-outline-secondary">Descargar HTML</a>
+    <button onclick="window.print()" class="btn btn-sm btn-primary">Imprimir</button>
+    <a href="{{ url_for('asignaciones.index') }}" class="btn btn-sm btn-link">Volver</a>
+  </div>
+</div>
+
+{% endblock %}

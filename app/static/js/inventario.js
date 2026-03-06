@@ -48,10 +48,10 @@ $(document).ready(function() {
         ],
         columnDefs: [
             { targets: [0,6,7,9,10,11], className: 'text-center' },
-            { targets: [1], width: '110px', responsivePriority: 2 },
+            { targets: [1], width: '110px', responsivePriority: 3 },
             { targets: [11], width: '180px', responsivePriority: 4 },
             { targets: [0], responsivePriority: 1 },
-            { targets: [4], responsivePriority: 3 },
+            { targets: [4], width: '320px', responsivePriority: 2 },
             { targets: [6], responsivePriority: 5 },
             { targets: [7], responsivePriority: 6 },
             { targets: [9], responsivePriority: 7 },
@@ -59,6 +59,9 @@ $(document).ready(function() {
         ],
         language: {
             url: '/static/js/vendor/es-ES.json'
+        },
+        search: {
+            caseInsensitive: true
         }
     });
     

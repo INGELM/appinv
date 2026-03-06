@@ -109,11 +109,17 @@ $(document).ready(function() {
 
         if (window.puedeAsignar) {
             const receptor = $('#id_receptor').val();
-            if (!receptor) {
-                Swal.fire('Error', 'Seleccione el usuario a quien asignar', 'error');
+            const receptor_ext = ($('#id_receptor_external').val() || '').trim();
+            if (!receptor && !receptor_ext) {
+                Swal.fire('Error', 'Seleccione el usuario a quien asignar o ingrese un nombre externo', 'error');
                 return;
             }
-            data.id_usuario_receptor = receptor;
+            if (receptor) {
+                data.id_usuario_receptor = receptor;
+            }
+            if (receptor_ext) {
+                data.receptores_externos = [receptor_ext];
+            }
         }
         
         $.ajax({

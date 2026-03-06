@@ -112,3 +112,13 @@ body {
 #tabla-inventario thead th.text-center, #tabla-inventario thead th:nth-child(1) {
     text-align: center;
 }
+
+/* Ajuste dinámico del ancho de la columna 'Material' */
+#tabla-inventario th:nth-child(5),
+#tabla-inventario td:nth-child(5) {
+    width: calc(200px * var(--factor-escala-material, 1));
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
