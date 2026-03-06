@@ -2,6 +2,12 @@ let tabla_mis_asignaciones;
 const seleccionMisAsignaciones = new Set();
 
 $(document).ready(function() {
+    // Botón seleccionar todos
+    $('#btn-select-all-mias').on('click', function() {
+        $('#tabla-mis-asignaciones input.select-asignacion').each(function() {
+            $(this).prop('checked', true).trigger('change');
+        });
+    });
     // Añadir token CSRF a todas las peticiones AJAX
     (function() {
         const meta = document.querySelector('meta[name="csrf-token"]');

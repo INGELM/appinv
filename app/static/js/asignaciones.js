@@ -3,6 +3,15 @@ const seleccion = new Set();
 let receptorSeleccionado = null;
 
 $(document).ready(function() {
+    // Botón seleccionar todos
+    $('#btn-select-all').on('click', function() {
+        $('#tabla-asignaciones input.select-asignacion').each(function() {
+            const estatus = $(this).data('estatus');
+            if (estatus === 'Aprobado') {
+                $(this).prop('checked', true).trigger('change');
+            }
+        });
+    });
     // Añadir token CSRF a todas las peticiones AJAX
     (function() {
         const meta = document.querySelector('meta[name="csrf-token"]');
