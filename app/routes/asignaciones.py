@@ -87,7 +87,7 @@ def listar():
         if a.id_usuario_receptor:
             receptor_id_out = f'u:{a.id_usuario_receptor}'
         else:
-            receptor_id_out = f'e:{(a.receptor_nombre or '').strip().lower()}'
+            receptor_id_out = 'e:' + (a.receptor_nombre or '').strip().lower()
         data.append({
             'id': a.id,
             'material': a.material.material,
